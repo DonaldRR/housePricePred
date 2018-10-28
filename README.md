@@ -30,11 +30,11 @@ or using command line (if this works...)
 kaggle competitions download -c house-prices-advanced-regression-techniques
 ```
 
-By default, you need to make two directories('datasets' and 'processed_data') under project directory to store data, like
+By default, you need to make two directories(`datasets` and `processed_data`) under your project directory `CurrentProjectDir` to store data, like
 ```
-->CurrentProjectDir
-  ->datasets
-  ->processed_data
+-->CurrentProjectDir
+  -->datasets
+  -->processed_data
 ```
 
 Of course, you can change directories of datasets in `config.py`
