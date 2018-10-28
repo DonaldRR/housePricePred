@@ -17,7 +17,7 @@ Code for House Prices: Advanced Regression Techniques(https://www.kaggle.com/c/h
 (Versions are not limited as stated above, they are just my laptop's configuration. Later versions are likely to work.)
 
 ## Install
-Install project in your local computer. (Install `git` before `pip install git`)
+Install project in your local computer. (Install `git` before， with `pip install git`)
 ```Bash
 git clone https://github.com/DonaldRR/housePricePred.git
 ```
