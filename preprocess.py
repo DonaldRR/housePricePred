@@ -4,6 +4,8 @@ from utils import *
 # =================================
 # ====== Read Original Data =======
 # =================================
+
+print("== 1. Reading Data ...")
 df_train = pd.read_csv(TRAINING_DATA_PATH)
 df_test = pd.read_csv(TEST_DATA_PATH)
 df_allX = pd.concat([df_train.loc[:, 'MSSubClass':'SaleCondition'],
@@ -27,19 +29,13 @@ for f in feats_numeric_discrete:
     feats_continu = np.delete(feats_continu, np.where(feats_continu == f))
     feats_discrete = np.append(feats_discrete, f)
 
+
 # =================================
 # ======= Preprocess Data =========
 # =================================
-df = pd.DataFrame(columns=('feature', 'f', 'p', 'logp'))
-df['feature'] = feats_discrete
-for fe in feats_discrete:
-    data = pd.concat([df_train[fe], df_train['SalePrice']], axis=1)
-    f, p = anovaXY(data)
-    df.loc[df[df.feature==fe].index,'f'] = f
-    df.loc[df[df.feature==fe].index,'p'] = p
-    df.loc[df[df.feature==fe].index,'logp'] = 1000 if (p==0) else np.log(1./p)
 
 # Drop Unuseful Features
+print("== 2. Drop Usefulless Features ...")
 feats_del = ['YrSold', 'MoSold']
 df_allX.drop(feats_del, axis=1, inplace=True)
 
@@ -49,6 +45,7 @@ for f in feats_del:
     feats_continu = np.delete(feats_continu, np.where(feats_continu == f))
     feats_discrete = np.delete(feats_discrete, np.where(feats_discrete == f))
 
+print("== 3. Drop Outliers ... ")
 # Drop Outliers
 ids = []
 
@@ -64,21 +61,24 @@ for id in np.unique(ids):
     df_train = df_train.drop(df_train[df_train.Id==id].index)
     df_allX = df_allX.drop(df_allX[df_allX.index==(id-1)].index)
 
+
+print("== 4. Replace NULL values ...")
 # Replace all NULL values for Numeric Data
 df_allX = df_allX.fillna(df_allX.mean())
 
 for c in feats_object:
     transNaNtoNA(df_allX, c)
 
-df_allX[feats_numeric] = df_allX[feats_numeric].apply(lambda x: (x-x.mean())/(x.std()))
+# df_allX[feats_numeric] = df_allX[feats_numeric].apply(lambda x: (x-x.mean())/(x.std()))
 
 dfc = df_train.copy()
 
+print("== 5. Encoding Categorical Features ... ")
 for fb in feats_object:
-    print("\r\n-----\r\n",fb,end=':')
+    # print("\r\n-----\r\n",fb,end=':')
     transNaNtoNA(dfc, fb)
     for attr_v, score in encode(dfc, fb).items():
-        print(attr_v, score, end='\t')
+        # print(attr_v, score, end='\t')
         df_allX.loc[df_allX[fb] == attr_v, fb] = score
 
 stillNA = NARatio(df_allX, df_allX.columns.values)
@@ -88,6 +88,13 @@ for sn in stillNA.keys():
     dftemp  = transNAtoNumber(dftemp,sn)
     df_allX = transNAtoNumber(df_allX,sn,dftemp[sn].mean())
 
+
+# =================================
+# ========== Save Data ============
+# =================================
+print("== 6. Save CSVs ...")
 num_train = df_train.shape[0]
-df_allX[:num_train].to_csv(PREPROCESSED_TRAINING_DATA_PATH)
+tmp_df_train = df_allX[:num_train].copy()
+tmp_df_train.loc[:, 'SalePrice'] = df_train['SalePrice'].values
+tmp_df_train.to_csv(PREPROCESSED_TRAINING_DATA_PATH)
 df_allX[num_train:].to_csv(PREPROCESSED_TEST_DATA_PATH)

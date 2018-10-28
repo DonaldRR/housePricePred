@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 import scipy
 from scipy import stats
+import matplotlib
+matplotlib.use("TkAgg")
 from matplotlib import pyplot as plt
 import seaborn as sns
 import sys
@@ -183,3 +185,12 @@ def encode(frame, feature, targetfeature='SalePrice'):
 
     return ordering
 
+def select_features(dataFrame, num, method='pearson', target_feature='SalePrice'):
+    """
+    :param dataFrame:
+    :param num:
+    :param method:
+    :param target_feature:
+    :return:
+    """
+    return dataFrame.corr(method=method).nlargest(num, target_feature).index
