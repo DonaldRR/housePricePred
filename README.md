@@ -2,7 +2,7 @@
 
 Code for House Prices: Advanced Regression Techniques(https://www.kaggle.com/c/house-prices-advanced-regression-techniques)
 
-### Environment & Dependencies:
+## Environment & Dependencies:
 
 * Python: 3.6
 * numpy(1.14.5)
@@ -16,7 +16,7 @@ Code for House Prices: Advanced Regression Techniques(https://www.kaggle.com/c/h
 (Versions are not limited as stated above, they are just my laptop's configuration. Later versions are likely to work.)
 
 
-### Datasets
+## Datasets
 You need to download Datasets from [kaggle's House Prices:Advanced Regression website](https://www.kaggle.com/c/house-prices-advanced-regression-techniques/data),
 or using command line (if this works...)
 ```Bash
@@ -32,16 +32,16 @@ By default, you need to make two directories('datasets' and 'processed_data') un
 
 Of course, you can change directories of datasets in `config.py`
 
-### Run Scripts
+## Run Scripts
 
-#### Preprocess
+### Preprocess
 First, process your original CSVs.
 ```Bash
 python preprocess.py
 ```
 Processed files will occur under `processed_data` directory
 
-#### Run Models
+### Run Models
 Run specific model to train the data.
 Three arguments are available,
 
