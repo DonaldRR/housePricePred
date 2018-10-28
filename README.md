@@ -15,6 +15,12 @@ Code for House Prices: Advanced Regression Techniques(https://www.kaggle.com/c/h
 * sklearn(>=0.19.2)
 (Versions are not limited as stated above, they are just my laptop's configuration. Later versions are likely to work.)
 
+## Install
+Install project in your local computer. (Install `git` before `pip install git`)
+```Bash
+git clone https://github.com/DonaldRR/housePricePred.git
+```
+
 
 ## Datasets
 You need to download Datasets from [kaggle's House Prices:Advanced Regression website](https://www.kaggle.com/c/house-prices-advanced-regression-techniques/data),
