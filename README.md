@@ -54,3 +54,7 @@ Three arguments are available,
 ```Bash
 python run_model.py [representation_name [num_features [epochs]]]
 ```
+
+## More
+
+More models can be implemented in `model.py`. And more functions for statistics, and visualizations will be good.
