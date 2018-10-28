@@ -44,9 +44,12 @@ Processed files will occur under `processed_data` directory
 #### Run Models
 Run specific model to train the data.
 Three arguments are available,
->`representation_name`, default 'xgb', as XGBoosting model
->`num_features`, default 15
->`epochs`, default 1000
+
+`representation_name`, default 'xgb', as XGBoosting model
+
+`num_features`, default 15
+
+`epochs`, default 1000
 
 ```Bash
 python run_model.py [representation_name [num_features [epochs]]]
