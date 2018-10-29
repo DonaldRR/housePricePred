@@ -40,7 +40,8 @@ if __name__ == '__main__':
                     'eta':int,
                     'silent':int,
                     'nthread':int,
-                    'objective':string, default 'reg:linear'
+                    'objective':string, default 'reg:linear',
+                    'verbose':Boolean,
                     }
                 b) nn
                     {'layers':[16,16], number of units for each fully connected layer
@@ -63,17 +64,20 @@ if __name__ == '__main__':
         ensemble_models = [
             ['xgb',
              {},
-             {}],
+             {'verbose':False,
+              'epochs':3000}],
             ['xgb',
              {},
-             {}],
-            ['nn',
+             {'verbose':False,
+              'epochs': 3000}],
+            ['xgb',
              {},
-             {}]
+             {'verbose':False,
+              'epochs': 3000}]
         ]
 
-
-    output_list = []
+    train_output_list = []
+    test_output_list = []
     print('Starting Training ...')
     for m in range(len(ensemble_models)):
 
@@ -85,11 +89,16 @@ if __name__ == '__main__':
         clf.add_model(representation_name=rps_name, config=model_config)    # add model
         X, y = clf.get_Xy(train_data, True, method='spearman')  # get training input data from dataFrame
         clf.fit(representation_name=rps_name, X=X, y=y, config=training_config) # training data
+        train_output = clf.predict(rps_name, X)
+        train_output_list.append(train_output)
         X_test = clf.get_Xy(test_data, False)   # get test input data
-        output_list.append(clf.predict(representation_name=rps_name, X=X_test)) # ger predicted output
+        test_output_list.append(clf.predict(representation_name=rps_name, X=X_test)) # ger predicted output
+        print("Model:{} mse:{}".format(str(m+1)+'_'+rps_name, clf.evaluate(y, train_output)))
+
+    print('Ensemble mse:{}'.format(clf.evaluate(y, np.mean(train_output_list, axis=0))))
 
     # Integrate all outputs from several models
-    final_output = ensemble_outputs(output_list=output_list)
+    final_output = ensemble_outputs(output_list=test_output_list)
 
     print('Fill in submission ...')
     # Fill submission.csv

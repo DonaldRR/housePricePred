@@ -8,6 +8,7 @@ from tensorflow.keras.layers import Dense, Dropout, Flatten, Input
 from tensorflow.keras.regularizers import l1, l2
 import xgboost as xgb
 from sklearn.ensemble import RandomForestRegressor,  GradientBoostingRegressor
+from sklearn.metrics import mean_squared_error
 
 class HousePriceModel:
     """
@@ -22,7 +23,6 @@ class HousePriceModel:
 
     def __init__(self):
         """
-        TODO: To implement more representation, like Random Forest, etc.
         :param representation_name:
             'nn' -- Neural Networks
             'xgb' -- XGBoosting
@@ -32,6 +32,8 @@ class HousePriceModel:
         self.models = {}
         self.outputs = {}
 
+
+    """TODO: To implement more representation, like Random Forest, etc."""
     def add_model(self, representation_name, config=None):
         # self.models store one or more models
 
@@ -47,7 +49,7 @@ class HousePriceModel:
             max_depth = config.get('max_depth', 2)
             eta = config.get('eta', 1)
             silent = config.get('silent', 1)
-            nthread =config.get('nthread', 4)
+            nthread =config.get('nthread', 8)
             objective = config.get('objective', 'reg:linear')
 
             self.XGB(max_depth=max_depth,
@@ -130,29 +132,15 @@ class HousePriceModel:
             Input Data
         :param y:
             Labels
-        :param epochs:
-            Training epochs
-        :param batch_size:
-            Training Batch size, for neural network
-        :param optimizer:
-            type: any object or string, specifically
-        :param split:
-            Ratio of validation set to overall data set
+        :param config:
+            training configuration
         """
-        epochs = 1000
-        batch_size = 64
-        optimizer = None
-        split = 0.3
 
-        for k, v in config.items():
-            if k == 'epochs':
-                epochs = v
-            if k == 'batch_size':
-                batch_size = v
-            if k == 'optimizer':
-                optimizer = v
-            if k == 'split':
-                split = v
+        epochs = config.get('epochs', 1000)
+        batch_size = config.get('batch_size', 64)
+        optimizer = config.get('optimizer', None)
+        split = config.get('split', 0.3)
+        verbose = config.get('verbose', True)
 
         self.X_train, self.X_valid, self.y_train, self.y_valid = train_test_split(X, y, test_size=split, random_state=2)
 
@@ -173,7 +161,9 @@ class HousePriceModel:
 
             evallist = [(dvalid, 'eval'), (dtrain, 'train')]
 
-            self.models[representation_name] = xgb.train(self.xgb_params, dtrain, epochs, evallist)
+            self.models[representation_name] = xgb.train(params=self.xgb_params, dtrain=dtrain,
+                                                         num_boost_round=epochs, evals=evallist,
+                                                         verbose_eval=verbose)
 
     def predict(self, representation_name, X):
         """
@@ -193,6 +183,15 @@ class HousePriceModel:
         self.outputs[representation_name] = np.exp(pred).reshape((pred.shape[0],))
 
         return self.outputs[representation_name]
+
+    def evaluate(self, y_true, y_pred):
+        """
+        :param representation_name:
+        :param X:
+        :return:
+        """
+
+        return mean_squared_error(y_true, y_pred)
 
     def fill_submission(self, y, dataFrame):
         """
