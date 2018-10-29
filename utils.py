@@ -194,3 +194,11 @@ def select_features(dataFrame, num, method='pearson', target_feature='SalePrice'
     :return:
     """
     return dataFrame.corr(method=method).nlargest(num, target_feature).index
+
+
+def ensemble_outputs(output_list):
+    """
+    output_list = [num_models, n_rows]
+    """
+
+    return np.mean(output_list, axis=1)
