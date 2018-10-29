@@ -52,7 +52,7 @@ Processed files will occur under `processed_data` directory
 Run specific model to train the data.
 Arguments are available,
 
-`model_type`, `nn` or `xgb` available
+`model_type`,  'nn' or 'xgb' available
 
 ```Bash
 python run_model.py [model_type [model_type [model_type [...]]]
