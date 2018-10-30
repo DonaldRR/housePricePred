@@ -8,6 +8,8 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 import sys
 
+
+
 # Plotting Features
 def plotfeats(frame, feats, kind, cols=4):
     """
@@ -196,9 +198,3 @@ def select_features(dataFrame, num, method='pearson', target_feature='SalePrice'
     return dataFrame.corr(method=method).nlargest(num, target_feature).index
 
 
-def ensemble_outputs(output_list):
-    """
-    output_list = [num_models, n_rows]
-    """
-
-    return np.mean(output_list, axis=1)

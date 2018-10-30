@@ -9,6 +9,14 @@ from tensorflow.keras.regularizers import l1, l2
 import xgboost as xgb
 from sklearn.ensemble import RandomForestRegressor,  GradientBoostingRegressor
 from sklearn.metrics import mean_squared_error
+from sklearn.svm import SVR
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.neural_network import MLPRegressor
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.ensemble import BaggingRegressor, RandomForestRegressor, GradientBoostingRegressor, AdaBoostRegressor
+from xgboost.sklearn import XGBRegressor
+
 
 class HousePriceModel:
     """
@@ -30,74 +38,78 @@ class HousePriceModel:
             Number of features
         """
         self.models = {}
+        """
+        {'model_name': {
+            'name': {
+                'model': model, (estimator object)
+                'training_config': {
+                    'num_features': num_features, (int)
+                    'split': split_rate, (float)
+                    Others
+                    }
+                }
+            }
+        }
+        """
         self.outputs = {}
 
 
     """TODO: To implement more representation, like Random Forest, etc."""
-    def add_model(self, representation_name, config=None):
-        # self.models store one or more models
+    def add_model(self, representation_name, name=None, config=None):
+        """
+        :param representation_name:
+            Representation name, like 'nn' or 'xgb'
 
-        self.num_features = config.get('num_features', 10)
+        :param name:
+            Name for certain model, like 'nn_1'
+
+        :param config:
+            List:[model_configuration, training_configuration]
+
+        """
+
+        if self.models.get(representation_name) == None:
+            self.models[representation_name] = {}
+        if name == None or name=='':
+            name = representation_name+'_'+str(len(self.models[representation_name].keys()) + 1)
+            self.models[representation_name][name] = {}
+
+        self.models[representation_name][name]['training_config'] = config[1]
 
         if representation_name == 'nn':
-            layers = config.get('layers', [16, 16])
-            verbose = config.get('verbose', True)
-
-            self.models['nn'] = self.NN(self.num_features, layers=layers, verbose=verbose)
-
-        if representation_name == 'xgb':
-            max_depth = config.get('max_depth', 2)
-            eta = config.get('eta', 1)
-            silent = config.get('silent', 1)
-            nthread =config.get('nthread', 8)
-            objective = config.get('objective', 'reg:linear')
-
-            self.XGB(max_depth=max_depth,
-                     eta=eta,
-                     silent=silent,
-                     nthread=nthread,
-                     objective=objective)
+            self.models['nn'][name]['model'] = self.NN(config[0])
+        elif representation_name == 'xgb':
+            self.models['xgb'][name]['model'] = self.XGB(config[0])
         else:
             print("Error: Unavailable Representation:{}".format(representation_name))
 
-    def XGB(self, max_depth, eta, silent, nthread, objective):
-        """
-        :param max_depth:
-        :param eta:
-        :param silent:
-        :param nthread:
-        :param objective:
-            Defuault 'reg:linear' as linear regression
-        """
-        self.xgb_params = {'max_depth':max_depth,
-                           'eta':eta,
-                           'silent':silent,
-                           'nthread':nthread,
-                           'objective':objective}
+        return name
 
-    def NN(self, input_size, layers, verbose=True):
-        """
-        :param input_size:
-            Input size, the same as number of features
-        :return:
-            Neural Network Model
-        """
-        input = Input((input_size,))
-        for l in range(len(layers)):
-            if l == 0:
-                fc = Dense(layers[l], kernel_regularizer=l2(0.01))(input)
-            else:
-                fc = Dense(16, kernel_regularizer=l2(0.01))(fc)
-        # dp = Dropout(0.3)(fc2)
-        output = Dense(1)(fc)
+    def XGB(self, config):
 
-        model = Model(inputs=input, outputs=output)
-        if verbose:
-            model.summary()
+        learning_rate = config.get('learning_rate', 0.1)
+        n_estimators = config.get('n_estimators', 200)
+        min_child_weight = config.get('min_child_weight', 3)
+        booster = config.get('booster', 'gbtree')
 
-        return model
+        return XGBRegressor(learning_rate=learning_rate,
+                            n_estimators=n_estimators,
+                            min_child_weight=min_child_weight,
+                            booster=booster)
 
-    def get_Xy(self, dataFrame, bool_train=True, method='pearson',target_feature='SalePrice'):
+    def NN(self, config):
+
+        hidden_layer_sizes = config.get('hidden_layer_sizes', (16, 16))
+        activation = config.get('activation', 'relu')
+        alpha = config.get('alph', 0.001)
+        learning_rate = config.get('learning_rate', 'adaptive')
+
+        return MLPRegressor(hidden_layer_sizes=hidden_layer_sizes,
+                            activation=activation,
+                            alpha=alpha,
+                            learning_rate=learning_rate)
+
+    def get_Xy(self, dataFrame, representation_name, index=0, name=None, bool_train=True, method='pearson',target_feature='SalePrice'):
         """
         :param dataFrame:
             type: pandas.DataFrame()
@@ -112,86 +124,113 @@ class HousePriceModel:
             Input Data, Labels
         """
 
+        if name is not None:
+            model_name = name
+        else:
+            model_name = self.models[representation_name].keys()[index]
+
+        num_features = self.models[representation_name][model_name]['training_config']['num_features']
+
         if bool_train:
-            self.features = select_features(dataFrame, self.num_features + 1, method=method)[1:]
-            X = np.array(dataFrame[self.features])
+            features = select_features(dataFrame, num_features + 1, method=method)[1:]
+            self.models[representation_name][model_name]['features'] = features
+            X = np.array(dataFrame[features])
             y = np.array(dataFrame[target_feature])
 
             return X, y
         else:
-            X = np.array(dataFrame[self.features])
+            features = self.models[representation_name][model_name]['features']
+            X = np.array(dataFrame[features])
 
             return X
 
-    def fit(self, representation_name, X, y, config):
+    def fit(self, representation_name, dataFrame, index=0, name=None):
         """
         :param representation_name:
             'nn' -- Neural Networks
             'xgb' -- XGBoosting
-        :param X:
-            Input Data
-        :param y:
-            Labels
-        :param config:
-            training configuration
+        :param index:
+            The order of model under model_type (e.g. 1 under 'nn')
+        :param name:
+            The name of model under model_type (e.g. 'nn_1' under 'nn')
         """
 
-        epochs = config.get('epochs', 1000)
-        batch_size = config.get('batch_size', 64)
-        optimizer = config.get('optimizer', None)
-        split = config.get('split', 0.3)
-        verbose = config.get('verbose', True)
+        if name is not None:
+            model_name = name
+        else:
+            try:
+                model_name = self.models[representation_name].keys()[index]
+            except:
+                print("Error: Not such a model: {} index={} name={}".format(representation_name, index, name))
 
-        self.X_train, self.X_valid, self.y_train, self.y_valid = train_test_split(X, y, test_size=split, random_state=2)
+        model = self.models[representation_name][model_name]['model']
+        training_config = self.models[representation_name][model_name]['training_config']
+
+        if training_config.get('num_features') == None:
+            training_config['num_features']= 10
+
+        num_features = training_config.get('num_features', 10)
+        split = training_config.get('split', 0.2)
+
+        X, y = self.get_Xy(dataFrame, representation_name=representation_name, name=model_name)
+        X_train, X_valid, y_train, y_valid = train_test_split(X, y, test_size=split, random_state=2)
 
         if representation_name == 'nn':
-            model = self.models[representation_name]
-
-            if optimizer == None:
-                optimizer = 'adam'
-
-            model.compile(optimizer=optimizer, loss='mean_squared_error')
-            self.hist = model.fit(x=self.X_train, y=self.y_train,
-                                  epochs=epochs, batch_size=batch_size,
-                                  validation_data=[self.X_valid, self.y_valid])
+            self.models[representation_name][model_name]['model'] = model.fit(X_train, y_train)
         if representation_name == 'xgb':
+            eval_set = training_config.get('eval_set', None)
+            eval_metric = training_config.get('eval_metric', None)
+            verbose = training_config.get('verbose', True)
+            xgb_model = training_config.get('xgb_model', None)
+            self.models[representation_name][model_name]['model'] = model.fit(X, y)
+            # model.fit(X, y,
+            #           eval_set = eval_set,
+            #           eval_metric = eval_metric,
+            #           verbose = verbose,
+            #           xgb_model = xgb_model)
 
-            dtrain = xgb.DMatrix(self.X_train, label=self.y_train)
-            dvalid = xgb.DMatrix(self.X_valid, label=self.y_valid)
+        print('\t-- Validation MSE of Model--{}: {}'.format(model_name,self.evaluate(y_valid, self.predict(representation_name, X_valid, name=model_name))))
 
-            evallist = [(dvalid, 'eval'), (dtrain, 'train')]
-
-            self.models[representation_name] = xgb.train(params=self.xgb_params, dtrain=dtrain,
-                                                         num_boost_round=epochs, evals=evallist,
-                                                         verbose_eval=verbose)
-
-    def predict(self, representation_name, X):
+    def predict(self, representation_name, X, index=0, name=None):
         """
         :param representation_name:
-        :param X:
-            Test Data
-        :return:
-            Predicted Labels
-        """
-
-        if representation_name == 'nn':
-            pred = self.models['nn'].predict(X)
-        if representation_name == 'xgb':
-            dtest = xgb.DMatrix(X)
-            pred = self.models[representation_name].predict(dtest)
-
-        self.outputs[representation_name] = np.exp(pred).reshape((pred.shape[0],))
-
-        return self.outputs[representation_name]
-
-    def evaluate(self, y_true, y_pred):
-        """
-        :param representation_name:
-        :param X:
+        :param dataFrame:
+        :param index:
+        :param name:
         :return:
         """
 
-        return mean_squared_error(y_true, y_pred)
+        if name is not None:
+            model_name = name
+        else:
+            model_name = self.models[representation_name].keys(index)
+
+        model = self.models[representation_name][model_name]['model']
+
+        return np.reshape(model.predict(X), newshape=(len(X),))
+
+
+    def evaluate(self, y_true, y_pred, bool_exp=False):
+        """
+        :param representation_name:
+        :param X:
+        :return:
+        """
+
+        if bool_exp:
+            return mean_squared_error(y_true, y_pred)
+        else:
+            return mean_squared_error(np.exp(y_true), np.exp(y_pred))
+
+    def ensemble_outputs(self, output_list, bool_exp=False):
+        """
+        output_list = [num_models, n_rows]
+        """
+
+        if bool_exp:
+            return np.mean(output_list, axis=0)
+        else:
+            return np.mean(np.exp(output_list), axis=0)
 
     def fill_submission(self, y, dataFrame):
         """

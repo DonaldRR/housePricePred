@@ -21,7 +21,7 @@ if __name__ == '__main__':
 
     args = sys.argv[1:]
 
-    clf = HousePriceModel()
+    CLFs = HousePriceModel()
 
     ensemble_models = []
     """
@@ -29,31 +29,44 @@ if __name__ == '__main__':
 
     It contains a List of models, for each #element:
         [0. representation name,
-        1. model config(dict),
-        2. training config (dict)]
+        1. model name,
+        2. [model config(dict), training config (dict)]
 
         Sample cofig: (No specification is allowed, which means using default values)
-
+        
+            !!! Check those PARAMETERS on Sklearn Package !!!
+        
             I. model config
                 a) xgb
-                    {'max_depth':int,
-                    'eta':int,
-                    'silent':int,
-                    'nthread':int,
-                    'objective':string, default 'reg:linear',
-                    'verbose':Boolean,
+                    {
+                    'learning_rate': learning_rate,
+                    'n_estimators': n_estimators,
+                    'min_child_weight': min_child_weight,
+                    'booster': booster
                     }
                 b) nn
-                    {'layers':[16,16], number of units for each fully connected layer
-                    'verbose':Boolean, 
+                    {
+                    'hidden_layer_sizes': hidden_layer_sizes,
+                    'activation': activation,
+                    'alpha': alpha,
+                    'learning_rate': learning_rate
                     }
 
             II. training config (dict)
-                {'epochs':int,
-                'batch_size':int,
-                'optimizer': str or object
-                'split':float
-                }
+                a) xgb
+                    {
+                    'num_features': num_features,
+                    'split': split,
+                    'eval_set': eval_set,
+                    'eval_metric': eval_metric,
+                    'verbose': verbose,
+                    'xgb_model': xgb_model
+                    }
+                b) nn
+                    {
+                    'num_features': num_features,
+                    'split': split,
+                    }
     """
 
     if len(args) > 0:
@@ -63,46 +76,55 @@ if __name__ == '__main__':
         # Default conbination of models
         ensemble_models = [
             ['xgb',
-             {},
-             {'verbose':False,
-              'epochs':3000}],
+             '',
+             [{}, {}]
+             ],
             ['xgb',
-             {},
-             {'verbose':False,
-              'epochs': 3000}],
+             '',
+             [{}, {}]
+             ],
             ['xgb',
-             {},
-             {'verbose':False,
-              'epochs': 3000}]
+             '',
+             [{},{}]
+             ]
         ]
 
+    m = train_data.shape[0]
+    y_train = np.reshape(train_data['SalePrice'], newshape=(m,))
     train_output_list = []
     test_output_list = []
-    print('Starting Training ...')
+
+    print('== Starting Training ...')
     for m in range(len(ensemble_models)):
 
         cur_model = ensemble_models[m]
+
         rps_name = cur_model[0]
-        model_config = cur_model[1]
-        training_config = cur_model[2]
+        model_name = cur_model[1]
+        config = cur_model[2]
 
-        clf.add_model(representation_name=rps_name, config=model_config)    # add model
-        X, y = clf.get_Xy(train_data, True, method='spearman')  # get training input data from dataFrame
-        clf.fit(representation_name=rps_name, X=X, y=y, config=training_config) # training data
-        train_output = clf.predict(rps_name, X)
+        model_name = CLFs.add_model(representation_name=rps_name, config=config)
+        CLFs.fit(representation_name=rps_name, dataFrame=train_data, name=model_name)
+
+        X_train, y_train_ = CLFs.get_Xy(train_data, representation_name=rps_name, name=model_name)
+        X_test = CLFs.get_Xy(test_data, representation_name=rps_name, name=model_name, bool_train=False)
+
+        train_output = CLFs.predict(representation_name=rps_name, X=X_train, name=model_name)
+        test_output = CLFs.predict(representation_name=rps_name, X=X_test, name=model_name)
+
         train_output_list.append(train_output)
-        X_test = clf.get_Xy(test_data, False)   # get test input data
-        test_output_list.append(clf.predict(representation_name=rps_name, X=X_test)) # ger predicted output
-        print("Model:{} mse:{}".format(str(m+1)+'_'+rps_name, clf.evaluate(y, train_output)))
+        test_output_list.append(test_output)
 
-    print('Ensemble mse:{}'.format(clf.evaluate(y, np.mean(train_output_list, axis=0))))
+        print("\t-- Overall MSE of Model-{}: {}".format(model_name, CLFs.evaluate(y_train, train_output)))
+
+    print('== Ensemble mse:{}'.format(CLFs.evaluate(np.exp(y_train), CLFs.ensemble_outputs(train_output_list), bool_exp=True)))
 
     # Integrate all outputs from several models
-    final_output = ensemble_outputs(output_list=test_output_list)
+    final_output = CLFs.ensemble_outputs(test_output_list)
 
-    print('Fill in submission ...')
+    print('== Fill in submission ...')
     # Fill submission.csv
     submission = pd.read_csv(SUBMISSION_PATH)
-    clf.fill_submission(final_output, submission)
+    CLFs.fill_submission(final_output, submission)
 
-    print("Process Successed!")
+    print("== Process Successed!")
