@@ -23,27 +23,28 @@ class HousePriceModel:
     Model for House Price Prediction Competition from kaggle.com
 
     Functions:
-        XGB: Set parameters for XGBoosting
-        NN: Build Neural Network with Keras
-        get_Xy: Transform pd.DataFrame to Input data and Label, given number of features
+
+        XGB: Return XGBRegressor() given configuration
+        NN: Return MLPRegressor() given configuration
+
+        get_Xy: Transform pd.DataFrame to Input data and Label, given certain model with num_feautures set
         fit: Training
+        predict: Predict outputs
+        evaluate: Return MSE metrics given true labels and predicted labels
+        ensemble_outputs: Compute mean of several sets of labels
+        fill_submission: Fill in CSV with labels
     """
 
     def __init__(self):
-        """
-        :param representation_name:
-            'nn' -- Neural Networks
-            'xgb' -- XGBoosting
-        :param num_features:
-            Number of features
-        """
+
         self.models = {}
         """
         {'model_name': {
             'name': {
                 'model': model, (estimator object)
+                'num_features': num_features, (int)
+                'features': features_names, (list of strings)
                 'training_config': {
-                    'num_features': num_features, (int)
                     'split': split_rate, (float)
                     Others
                     }
@@ -51,10 +52,7 @@ class HousePriceModel:
             }
         }
         """
-        self.outputs = {}
 
-
-    """TODO: To implement more representation, like Random Forest, etc."""
     def add_model(self, representation_name, name=None, config=None):
         """
         :param representation_name:
@@ -71,20 +69,23 @@ class HousePriceModel:
         if self.models.get(representation_name) == None:
             self.models[representation_name] = {}
         if name == None or name=='':
-            name = representation_name+'_'+str(len(self.models[representation_name].keys()) + 1)
-            self.models[representation_name][name] = {}
+            model_name = representation_name+'_'+str(len(self.models[representation_name].keys()) + 1)
+        self.models[representation_name][model_name] = {}
 
-        self.models[representation_name][name]['training_config'] = config[1]
+        self.models[representation_name][model_name]['training_config'] = config[1]
+        if self.models[representation_name][model_name]['training_config'].get('num_features') == None:
+            self.models[representation_name][model_name]['num_features']= 10
 
         if representation_name == 'nn':
-            self.models['nn'][name]['model'] = self.NN(config[0])
+            self.models['nn'][model_name]['model'] = self.NN(config[0])
         elif representation_name == 'xgb':
-            self.models['xgb'][name]['model'] = self.XGB(config[0])
+            self.models['xgb'][model_name]['model'] = self.XGB(config[0])
         else:
             print("Error: Unavailable Representation:{}".format(representation_name))
 
-        return name
+        return model_name
 
+    # TODO: Add other learners like XGB and NN
     def XGB(self, config):
 
         learning_rate = config.get('learning_rate', 0.1)
@@ -112,16 +113,17 @@ class HousePriceModel:
     def get_Xy(self, dataFrame, representation_name, index=0, name=None, bool_train=True, method='pearson',target_feature='SalePrice'):
         """
         :param dataFrame:
-            type: pandas.DataFrame()
+        :param representation_name:
+        :param index:
+        :param name:
+            Model Name
+        :param bool_train:
+            The difference between training and test dataFrame() is whether it has 'SalePrice' column or not
         :param method:
-            Correlation Metrics:
-                'pearson': Pearson Method
-                'spearman': Spearman Method
+            'pearson' or 'spearman'
         :param target_feature:
-            Default 'SalePrice', as this is the Label
         :return:
-            type: numpy.ndarray()
-            Input Data, Labels
+            X and y or X, numpy.ndarray()
         """
 
         if name is not None:
@@ -129,7 +131,7 @@ class HousePriceModel:
         else:
             model_name = self.models[representation_name].keys()[index]
 
-        num_features = self.models[representation_name][model_name]['training_config']['num_features']
+        num_features = self.models[representation_name][model_name]['num_features']
 
         if bool_train:
             features = select_features(dataFrame, num_features + 1, method=method)[1:]
@@ -144,6 +146,7 @@ class HousePriceModel:
 
             return X
 
+    # TODO: For New Learners, complete IF conditions for training
     def fit(self, representation_name, dataFrame, index=0, name=None):
         """
         :param representation_name:
@@ -166,10 +169,6 @@ class HousePriceModel:
         model = self.models[representation_name][model_name]['model']
         training_config = self.models[representation_name][model_name]['training_config']
 
-        if training_config.get('num_features') == None:
-            training_config['num_features']= 10
-
-        num_features = training_config.get('num_features', 10)
         split = training_config.get('split', 0.2)
 
         X, y = self.get_Xy(dataFrame, representation_name=representation_name, name=model_name)
@@ -177,17 +176,17 @@ class HousePriceModel:
 
         if representation_name == 'nn':
             self.models[representation_name][model_name]['model'] = model.fit(X_train, y_train)
-        if representation_name == 'xgb':
+        elif representation_name == 'xgb':
             eval_set = training_config.get('eval_set', None)
             eval_metric = training_config.get('eval_metric', None)
             verbose = training_config.get('verbose', True)
             xgb_model = training_config.get('xgb_model', None)
-            self.models[representation_name][model_name]['model'] = model.fit(X, y)
-            # model.fit(X, y,
-            #           eval_set = eval_set,
-            #           eval_metric = eval_metric,
-            #           verbose = verbose,
-            #           xgb_model = xgb_model)
+            self.models[representation_name][model_name]['model'] = model.fit(X, y,
+                                                                              eval_set = eval_set,
+                                                                              eval_metric = eval_metric,
+                                                                              verbose = verbose,
+                                                                              xgb_model = xgb_model)
+
 
         print('\t-- Validation MSE of Model--{}: {}'.format(model_name,self.evaluate(y_valid, self.predict(representation_name, X_valid, name=model_name))))
 
