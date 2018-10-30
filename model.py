@@ -39,6 +39,16 @@ class HousePriceModel:
 
         self.models = {}
         """
+        
+        ========================== IMPORTANT ===========================
+        
+        In this model, you need to specify certain model with 
+        'representation_name' and 'index' or 'name'. As self.models can 
+        store many models, we can stack those many good models to get 
+        the best output. 
+        
+        ================================================================
+        
         {'model_name': {
             'name': {
                 'model': model, (estimator object)
@@ -191,13 +201,6 @@ class HousePriceModel:
         print('\t-- Validation MSE of Model--{}: {}'.format(model_name,self.evaluate(y_valid, self.predict(representation_name, X_valid, name=model_name))))
 
     def predict(self, representation_name, X, index=0, name=None):
-        """
-        :param representation_name:
-        :param dataFrame:
-        :param index:
-        :param name:
-        :return:
-        """
 
         if name is not None:
             model_name = name
@@ -210,11 +213,7 @@ class HousePriceModel:
 
 
     def evaluate(self, y_true, y_pred, bool_exp=False):
-        """
-        :param representation_name:
-        :param X:
-        :return:
-        """
+
 
         if bool_exp:
             return mean_squared_error(y_true, y_pred)
@@ -223,7 +222,8 @@ class HousePriceModel:
 
     def ensemble_outputs(self, output_list, bool_exp=False):
         """
-        output_list = [num_models, n_rows]
+        :param output_list:
+            [num_models, n_rows]
         """
 
         if bool_exp:
@@ -232,14 +232,6 @@ class HousePriceModel:
             return np.mean(np.exp(output_list), axis=0)
 
     def fill_submission(self, y, dataFrame):
-        """
-        :param X:
-            Predicted Labels
-        :param dataFrame:
-            Submission.csv to fill
-        :return:
-            Filled Submission.csv
-        """
 
         dataFrame.loc[:, 'SalePrice'] = pd.Series(y)
 
