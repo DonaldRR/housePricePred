@@ -60,4 +60,4 @@ python run_model.py [model_type [model_type [model_type [...]]]
 
 ## More
 
-More models can be implemented in `model.py`. And more functions for statistics, and visualizations will be good.
+`TODOs` in `model.py` are what you need to complete.
