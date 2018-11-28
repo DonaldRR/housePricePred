@@ -80,6 +80,8 @@ class HousePriceModel:
             self.models[representation_name] = {}
         if name == None or name=='':
             model_name = representation_name+'_'+str(len(self.models[representation_name].keys()) + 1)
+        else:
+            model_name = name
         self.models[representation_name][model_name] = {}
 
         self.models[representation_name][model_name]['training_config'] = config[1]
@@ -90,6 +92,8 @@ class HousePriceModel:
             self.models['nn'][model_name]['model'] = self.NN(config[0])
         elif representation_name == 'xgb':
             self.models['xgb'][model_name]['model'] = self.XGB(config[0])
+        elif representation_name == 'svr':
+            self.models['svr'][model_name]['model'] = self.SVR(config[0])
         else:
             print("Error: Unavailable Representation:{}".format(representation_name))
 
@@ -114,11 +118,28 @@ class HousePriceModel:
         activation = config.get('activation', 'relu')
         alpha = config.get('alph', 0.001)
         learning_rate = config.get('learning_rate', 'adaptive')
+        max_iter = config.get('max_iter', 200)
 
         return MLPRegressor(hidden_layer_sizes=hidden_layer_sizes,
                             activation=activation,
                             alpha=alpha,
-                            learning_rate=learning_rate)
+                            learning_rate=learning_rate,
+                            max_iter=max_iter)
+
+    def SVR(self, config):
+        degree = config.get('degree',3)
+        kernel = config.get('kernel','rbf')
+        gamma = config.get('gamma','auto')
+        coef0 = config.get('coef0',0.0)
+        C = config.get('C',1.0)
+        tol = config.get('tol',1e-3)
+
+        return SVR(kernel=kernel,
+                   degree=degree,
+                   gamma=gamma,
+                   coef0=coef0,
+                   C=C,
+                   tol=tol)
 
     def get_Xy(self, dataFrame, representation_name, index=0, name=None, bool_train=True, method='pearson',target_feature='SalePrice'):
         """
@@ -186,6 +207,8 @@ class HousePriceModel:
 
         if representation_name == 'nn':
             self.models[representation_name][model_name]['model'] = model.fit(X_train, y_train)
+        elif representation_name == 'svr':
+            self.models[representation_name][model_name]['model'] = model.fit(X_train, y_train)
         elif representation_name == 'xgb':
             eval_set = training_config.get('eval_set', None)
             eval_metric = training_config.get('eval_metric', None)
@@ -212,24 +235,17 @@ class HousePriceModel:
         return np.reshape(model.predict(X), newshape=(len(X),))
 
 
-    def evaluate(self, y_true, y_pred, bool_exp=False):
+    def evaluate(self, y_true, y_pred):
 
+        return mean_squared_error(y_true, y_pred)
 
-        if bool_exp:
-            return mean_squared_error(y_true, y_pred)
-        else:
-            return mean_squared_error(np.exp(y_true), np.exp(y_pred))
-
-    def ensemble_outputs(self, output_list, bool_exp=False):
+    def ensemble_outputs(self, output_list):
         """
         :param output_list:
             [num_models, n_rows]
         """
 
-        if bool_exp:
-            return np.mean(output_list, axis=0)
-        else:
-            return np.mean(np.exp(output_list), axis=0)
+        return np.mean(output_list, axis=0)
 
     def fill_submission(self, y, dataFrame):
 

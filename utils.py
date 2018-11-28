@@ -7,8 +7,9 @@ matplotlib.use("TkAgg")
 from matplotlib import pyplot as plt
 import seaborn as sns
 import sys
-
-
+import time
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.metrics import mean_squared_error
 
 # Plotting Features
 def plotfeats(frame, feats, kind, cols=4):
@@ -197,4 +198,20 @@ def select_features(dataFrame, num, method='pearson', target_feature='SalePrice'
     """
     return dataFrame.corr(method=method).nlargest(num, target_feature).index
 
+def grid(estimator, params, X, y):
+    """
+    :param k:
+    :param v:
+    :return:
+    """
 
+    clf = GridSearchCV(estimator, params, cv=5, scoring='neg_mean_squared_error', verbose=1, n_jobs=-1)
+    clf.fit(X, y)
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    y_true, y_pred = y_test, clf.predict(X_test)
+    mse = mean_squared_error(y_true, y_pred)
+
+    print("\t-- Test MSE:{}".format(mse))
+
+    return clf, clf.best_params_
