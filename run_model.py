@@ -90,7 +90,10 @@ if __name__ == '__main__':
         # ]
 
         grid_params = {
-            'xgb':{'learning_rate':[0.2, 0.1, 0.05, 0.02],
+            'xgb':{'max_depth':[2, 4, 6],
+                   'gamma':[0.01, 0.02, 0.05, 0.1],
+                   'max_delta_step':[1, 2, 4],
+                   'learning_rate':[0.2, 0.1, 0.05, 0.02],
                    'n_estimators':[100, 200, 300, 400, 500],
                    'min_child_weight':[3, 4, 5, 6],
                    'booster':['gbtree', 'gblinear', 'dart']},
@@ -104,8 +107,23 @@ if __name__ == '__main__':
                    'gamma': [1e-3, 1e-4, 1e-5],
                    'C': [1.0, 0.5, 2],
                    'coef0':[0.0, 0.1, 0.2],
-                   'tol':[1e-3, 1e-4, 5e-4, 2e-3]}
-
+                   'tol':[1e-3, 1e-4, 5e-4, 2e-3]},
+            'randF':{'n_estimators':[5, 10, 15, 20],
+                     'criterion':['mse'],
+                     'max_depth':[None, 10, 15, 20],
+                     'min_samples_split':[2, 5, 8, 10],
+                     'min_samples_leaf':[1, 3, 5]},
+            'bagging':{'base_estimator':[None],
+                       'n_estimators':[3, 7, 10, 13],
+                       'max_samples':[0.5, 0.8, 1.0],
+                       'max_features':[0.5, 0.8, 1.0],
+                       'bootstrap':[True, False]},
+            'dt':{'criterion':['mse'],
+                  'splitter':['best', 'random'],
+                  'max_depth':[None, 5, 8, 10, 12, 15],
+                  'min_samples_split':[2, 5, 10, 15],
+                  'min_samples_leaf':[1, 2, 4, 8],
+                  'min_weight_fraction_leaf':[0., 0.01, 0.02, 0.05]}
         }
 
     m = train_data.shape[0]
@@ -113,17 +131,19 @@ if __name__ == '__main__':
     train_output_list = []
     test_output_list = []
 
-    reps_list = ['xgb','nn','svr']
+    reps_list = ['xgb','svr']
     for t in reps_list:
         print("== Grid {} Parameters ...".format(t))
         # Create Dummy estimator
-        dummy_xgb = CLFs.add_model(t, name='dummy', config=[{}, {'split': 0}])
-        X_, y_ = CLFs.get_Xy(train_data, representation_name=t, name=dummy_xgb)
+        dummy_model = CLFs.add_model(t, name='dummy', config=[{}, {'split': 0}])
+        X_, y_ = CLFs.get_Xy(train_data, representation_name=t, name=dummy_model)
         # GridSearch
-        best_model_xgb, best_params_xgb = grid(CLFs.models[t][dummy_xgb]['model'], grid_params[t], X_, y_)
-        # Add Best XGB
-        best_xgb = CLFs.add_model(t,name='best',config=[best_params_xgb, {}])
-        # Fit Best XGB
+        best_model, best_params = grid(CLFs.models[t][dummy_model]['model'], grid_params[t], X_, y_)
+        print(best_params)
+        np.save('{}_cv_results.npy'.format(t), best_model.cv_results_)
+        # Add Best Model
+        best_xgb = CLFs.add_model(t,name='best',config=[best_params, {}])
+        # Fit Best Model
         CLFs.fit(t, dataFrame=train_data, name=best_xgb)
         # Evaluate on test set
         X_test = CLFs.get_Xy(test_data, representation_name=t, name='best', bool_train=False)

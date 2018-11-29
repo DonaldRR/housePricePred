@@ -94,23 +94,36 @@ class HousePriceModel:
             self.models['xgb'][model_name]['model'] = self.XGB(config[0])
         elif representation_name == 'svr':
             self.models['svr'][model_name]['model'] = self.SVR(config[0])
+        elif representation_name == 'randF':
+            self.models['randF'][model_name]['model'] = self.RandomForest(config[0])
+        elif representation_name == 'bagging':
+            self.models['bagging'][model_name]['model'] = self.Bagging(config[0])
+        elif representation_name == 'logistic':
+            self.models['logistic'][model_name]['model'] = self.Logistic(config[0])
+        elif representation_name == 'dt':
+            self.models['dt'][model_name]['model'] = self.DT(config[0])
         else:
             print("Error: Unavailable Representation:{}".format(representation_name))
 
         return model_name
 
-    # TODO: Add other learners like XGB and NN
     def XGB(self, config):
 
         learning_rate = config.get('learning_rate', 0.1)
         n_estimators = config.get('n_estimators', 200)
         min_child_weight = config.get('min_child_weight', 3)
         booster = config.get('booster', 'gbtree')
+        max_depth = config.get('max_depth', 2)
+        gamma = config.get('gamma', 0.01)
+        max_delta_step = config.get('max_delta_step',1)
 
         return XGBRegressor(learning_rate=learning_rate,
                             n_estimators=n_estimators,
                             min_child_weight=min_child_weight,
-                            booster=booster)
+                            booster=booster,
+                            max_depth=max_depth,
+                            gamma=gamma,
+                            max_delta_step=max_delta_step)
 
     def NN(self, config):
 
@@ -140,6 +153,66 @@ class HousePriceModel:
                    coef0=coef0,
                    C=C,
                    tol=tol)
+
+    def RandomForest(self, config):
+        n_estimators = config.get('n_estimators', 10)
+        criterion = config.get('criterion', 'mse')
+        max_depth = config.get('max_depth', None)
+        min_samples_split = config.get('min_samples_split', 2)
+        min_samples_leaf = config.get('min_samples_leaf', 1)
+
+        return RandomForestRegressor(n_estimators=n_estimators,
+                                     max_depth=max_depth,
+                                     min_samples_split=min_samples_split,
+                                     min_samples_leaf=min_samples_leaf,
+                                     criterion=criterion)
+
+    def Bagging(self, config):
+        base_estimator = config.get('base_estimator', None)
+        n_estimators = config.get('n_estimators', 10)
+        max_samples = config.get('max_samples', 1.0)
+        max_features = config.get('max_features', 1.0)
+        bootstrap = config.get('bootstrap', True)
+
+        return BaggingRegressor(base_estimator=base_estimator,
+                                n_estimators=n_estimators,
+                                max_samples=max_samples,
+                                max_features=max_features,
+                                bootstrap=bootstrap)
+
+    def Logistic(self, config):
+        penalty = config.get('penalty', 'l2')
+        dual = config.get('dual', False)
+        tol = config.get('tol', 1e-4)
+        C = config.get('C', 1.0)
+        random_state = config.get('random_state', None)
+        solver = config.get('solver', 'liblinear')
+        max_iter = config.get('max_iter', 100)
+
+        return LogisticRegression(penalty=penalty,
+                                  dual=dual,
+                                  tol=tol,
+                                  C=C,
+                                  random_state=random_state,
+                                  solver=solver,
+                                  max_iter=max_iter)
+
+    def DT(self, config):
+        criterion = config.get('criterion', 'mse')
+        splitter = config.get('splitter', 'best')
+        max_depth = config.get('max_depth', None)
+        min_samples_split = config.get('min_samples_split', 2)
+        min_samples_leaf = config.get('min_samples_leaf', 1)
+        min_weight_fraction_leaf = config.get('min_weight_fraction_leaf', 0.)
+        min_impurity_decrease = config.get('min_impurity_decrease', 1e-7)
+
+        return DecisionTreeRegressor(criterion=criterion,
+                                     splitter=splitter,
+                                     max_depth=max_depth,
+                                     min_samples_split=min_samples_split,
+                                     min_samples_leaf=min_samples_leaf,
+                                     min_weight_fraction_leaf=min_weight_fraction_leaf,
+                                     min_impurity_decrease=min_impurity_decrease)
 
     def get_Xy(self, dataFrame, representation_name, index=0, name=None, bool_train=True, method='pearson',target_feature='SalePrice'):
         """
@@ -177,7 +250,7 @@ class HousePriceModel:
 
             return X
 
-    # TODO: For New Learners, complete IF conditions for training
+
     def fit(self, representation_name, dataFrame, index=0, name=None):
         """
         :param representation_name:
@@ -208,6 +281,14 @@ class HousePriceModel:
         if representation_name == 'nn':
             self.models[representation_name][model_name]['model'] = model.fit(X_train, y_train)
         elif representation_name == 'svr':
+            self.models[representation_name][model_name]['model'] = model.fit(X_train, y_train)
+        elif representation_name == 'randF':
+            self.models[representation_name][model_name]['model'] = model.fit(X_train, y_train)
+        elif representation_name == 'bagging':
+            self.models[representation_name][model_name]['model'] = model.fit(X_train, y_train)
+        elif representation_name == 'logistic':
+            self.models[representation_name][model_name]['model'] = model.fit(X_train, y_train)
+        elif representation_name == 'dt':
             self.models[representation_name][model_name]['model'] = model.fit(X_train, y_train)
         elif representation_name == 'xgb':
             eval_set = training_config.get('eval_set', None)

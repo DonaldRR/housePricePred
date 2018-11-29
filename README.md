@@ -9,7 +9,6 @@ Code for House Prices: Advanced Regression Techniques(https://www.kaggle.com/c/h
 * pandas(0.23.4)
 * scipy(1.1.0)
 * matplotlib(2.2.3)
-* tensorflow(1.10.1)
 * xgboost(0.80)
 * seaborn
 * sklearn(>=0.19.2)
